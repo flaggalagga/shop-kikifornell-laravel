@@ -1,0 +1,13 @@
+; Example .ovhconfig for the OVH web hosting.
+;
+; Copy to the ROOT of the hosting FTP space ($HOME/.ovhconfig), not inside
+; the project. OVH applies ONE PHP version to the whole hosting: check that
+; every other site on the plan (e.g. the old PrestaShop) runs on it too.
+;
+; Laravel 13 needs PHP 8.3 or newer.
+
+app.engine=php
+app.engine.version=8.4
+http.firewall=none
+environment=production
+container.image=stable64

@@ -1,0 +1,86 @@
+name: Deploy to OVH
+
+# Runs after the tests pass on "main", or by hand from the Actions tab.
+# Does nothing until the repository variable DEPLOY_ENABLED is "true".
+#
+# Secrets  (Settings > Secrets and variables > Actions > Secrets):
+#   OVH_SSH_HOST         ssh.cluster0XX.hosting.ovh.net
+#   OVH_SSH_USER         your OVH FTP/SSH login
+#   OVH_SSH_KEY          private key whose public half is in ~/.ssh/authorized_keys on OVH
+#   OVH_SSH_KNOWN_HOSTS  output of: ssh-keyscan ssh.cluster0XX.hosting.ovh.net
+# Variables (Settings > Secrets and variables > Actions > Variables):
+#   DEPLOY_ENABLED       true
+#   OVH_DEPLOY_PATH      folder of the app on the hosting, e.g. shop   (relative to the FTP root)
+#   OVH_PHP_BIN          php binary on OVH, e.g. php or /usr/local/php8.4/bin/php  (default: php)
+
+on:
+  workflow_run:
+    workflows: [Tests]
+    branches: [main]
+    types: [completed]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    if: vars.DEPLOY_ENABLED == 'true' && (github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success')
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          extensions: gd, intl, zip
+          coverage: none
+
+      - name: Install production dependencies
+        run: composer install --no-dev --optimize-autoloader --no-interaction --prefer-dist --no-progress
+
+      - name: Set up SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.OVH_SSH_KEY }}" > ~/.ssh/id_deploy
+          chmod 600 ~/.ssh/id_deploy
+          echo "${{ secrets.OVH_SSH_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
+
+      - name: Maintenance mode on
+        env:
+          APP_DIR: ${{ vars.OVH_DEPLOY_PATH }}
+          PHP_BIN: ${{ vars.OVH_PHP_BIN || 'php' }}
+        run: |
+          ssh -i ~/.ssh/id_deploy "${{ secrets.OVH_SSH_USER }}@${{ secrets.OVH_SSH_HOST }}" \
+            "cd \"$APP_DIR\" 2>/dev/null && [ -f artisan ] && $PHP_BIN artisan down --retry=30 || true"
+
+      - name: Upload files
+        env:
+          TARGET: ${{ secrets.OVH_SSH_USER }}@${{ secrets.OVH_SSH_HOST }}:${{ vars.OVH_DEPLOY_PATH }}/
+        run: |
+          rsync -az --delete \
+            -e "ssh -i ~/.ssh/id_deploy" \
+            --exclude='.git/' --exclude='.github/' --exclude='tests/' --exclude='node_modules/' \
+            --exclude='.env' --exclude='storage/' --exclude='public/storage' \
+            --exclude='database/database.sqlite' \
+            ./ "$TARGET"
+
+      - name: Migrate and cache
+        env:
+          APP_DIR: ${{ vars.OVH_DEPLOY_PATH }}
+          PHP_BIN: ${{ vars.OVH_PHP_BIN || 'php' }}
+        run: |
+          ssh -i ~/.ssh/id_deploy "${{ secrets.OVH_SSH_USER }}@${{ secrets.OVH_SSH_HOST }}" bash -s <<EOF
+          set -e
+          cd "$APP_DIR"
+          mkdir -p storage/app/public storage/framework/cache/data storage/framework/sessions storage/framework/views storage/logs bootstrap/cache
+          $PHP_BIN artisan migrate --force
+          [ -e public/storage ] || $PHP_BIN artisan storage:link
+          $PHP_BIN artisan optimize
+          $PHP_BIN artisan filament:optimize
+          $PHP_BIN artisan up
+          EOF
