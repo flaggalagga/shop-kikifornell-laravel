@@ -1,0 +1,81 @@
+name: Import from PrestaShop
+
+# Runs `php artisan shop:import-prestashop` on the OVH hosting, by hand from
+# the Actions tab (Run workflow). Uses the same SSH secrets as the deploy.
+#
+# Pieces and collections already imported are left alone, so edits made in
+# the admin are kept; only "Overwrite" replaces them with PrestaShop's data.
+#
+# Optional variable (Settings > Secrets and variables > Actions > Variables):
+#   PRESTASHOP_IMAGES_PATH   PrestaShop photo folder, relative to the OVH home
+#                            (default: www/boutique/img/p)
+
+on:
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Essai à blanc : montre ce qui serait importé sans rien écrire"
+        type: boolean
+        default: true
+      collections:
+        description: "Catégories PrestaShop à importer comme collections (ids séparés par des virgules)"
+        type: string
+        default: "5,6"
+      update:
+        description: "Écraser les pièces déjà importées (remplace les modifications faites dans l'admin)"
+        type: boolean
+        default: false
+
+# Never at the same time as a deploy.
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+jobs:
+  import:
+    if: vars.DEPLOY_ENABLED == 'true'
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check the inputs
+        env:
+          COLLECTIONS: ${{ inputs.collections }}
+        run: |
+          if ! [[ "$COLLECTIONS" =~ ^[0-9]+(,[0-9]+)*$ ]]; then
+            echo "::error::Collections must be category ids separated by commas, e.g. 5,6"
+            exit 1
+          fi
+
+      - name: Set up SSH
+        uses: ./.github/actions/ovh-ssh
+        with:
+          host: ${{ secrets.OVH_SSH_HOST }}
+          user: ${{ secrets.OVH_SSH_USER }}
+          key: ${{ secrets.OVH_SSH_KEY }}
+          known_hosts: ${{ secrets.OVH_SSH_KNOWN_HOSTS }}
+
+      - name: Run the import
+        shell: bash
+        env:
+          APP_DIR: ${{ vars.OVH_DEPLOY_PATH }}
+          PHP_BIN: ${{ vars.OVH_PHP_BIN || 'php' }}
+          IMAGES: ${{ vars.PRESTASHOP_IMAGES_PATH || 'www/boutique/img/p' }}
+          COLLECTIONS: ${{ inputs.collections }}
+          DRY_RUN: ${{ inputs.dry_run }}
+          UPDATE: ${{ inputs.update }}
+        run: |
+          # \$HOME is expanded on the OVH side.
+          args="--images=\$HOME/$IMAGES --collections=$COLLECTIONS"
+          [ "$DRY_RUN" = "true" ] && args="$args --dry-run"
+          [ "$UPDATE" = "true" ] && args="$args --update"
+
+          ssh ovh "cd \"$APP_DIR\" && $PHP_BIN artisan shop:import-prestashop $args --no-ansi" | tee import-output.txt
+
+          {
+            echo "### Import from PrestaShop $([ "$DRY_RUN" = "true" ] && echo '(essai à blanc)')"
+            echo '```'
+            cat import-output.txt
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"

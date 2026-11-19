@@ -28,8 +28,10 @@ use Throwable;
  * - Photos are copied from PrestaShop's img/p folder (originals).
  * - The PrestaShop ids are kept in legacy_id so old URLs redirect (301).
  *
- * Safe to run several times: records are matched on legacy_id and photos
- * are only imported for pieces that have none yet.
+ * Safe to run several times: pieces and collections already imported
+ * (matched on legacy_id) are left alone, so edits made in the admin are
+ * kept; only new ones are added. --update overwrites them with the
+ * PrestaShop data again. Photos are only imported for pieces that have none.
  *
  * Checked with a dry run against the real shop (PrestaShop on OVH, Nov 2026).
  * Always do a --dry-run first and check the table it prints.
@@ -42,6 +44,7 @@ class ImportPrestashop extends Command
         {--shop=1 : PrestaShop shop id}
         {--collections= : Comma-separated PrestaShop category ids to import as collections (default: all top-level categories)}
         {--keep-titles : Keep product names as they are (by default the collection name and reference are removed from the start)}
+        {--update : Also overwrite pieces and collections imported before (replaces edits made in the admin)}
         {--tax-rate=0 : Percentage to add to PrestaShop prices if they were stored without VAT}
         {--dry-run : Show what would be imported without writing anything}';
 
@@ -105,11 +108,18 @@ class ImportPrestashop extends Command
             $collectionNames[$categoryId] = [$nameFr, $nameEn];
             $this->line("Collection #{$cat->id_category}: {$nameFr}");
 
+            $collection = JewelryCollection::query()->firstOrNew(['legacy_id' => $cat->id_category]);
+
             if ($dryRun) {
                 continue;
             }
 
-            $collection = JewelryCollection::query()->firstOrNew(['legacy_id' => $cat->id_category]);
+            if ($collection->exists && ! $this->option('update')) {
+                $collectionIds[$categoryId] = $collection->id; // keep Kiki's edits
+
+                continue;
+            }
+
             $collection->fill([
                 'name_fr' => $nameFr,
                 'name_en' => $nameEn,
@@ -211,7 +221,11 @@ class ImportPrestashop extends Command
                 'position' => (int) $id,
             ];
 
+            $existing = Piece::query()->where('legacy_id', $id)->first();
+            $action = ! $existing ? 'nouvelle' : ($this->option('update') ? 'mise à jour' : 'déjà là');
+
             $rows[] = [
+                $action,
                 $id,
                 $reference,
                 $psCollection ? $collectionNames[$psCollection][0] : '—',
@@ -226,22 +240,30 @@ class ImportPrestashop extends Command
                 continue;
             }
 
-            $piece = Piece::query()->firstOrNew(['legacy_id' => $id]);
-            $piece->fill($data);
-            $piece->reference = $piece->reference ?: $this->uniqueReference($reference, $piece->id);
-            $piece->slug ??= $this->uniqueSlug(Piece::class, Str::slug($reference.' '.$titleEn), $piece->id);
-            $piece->status = $status;
-            $piece->save();
+            $piece = $existing ?? new Piece(['legacy_id' => $id]);
+
+            if (! $existing || $this->option('update')) {
+                $piece->fill($data);
+                $piece->reference = $piece->reference ?: $this->uniqueReference($reference, $piece->id);
+                $piece->slug ??= $this->uniqueSlug(Piece::class, Str::slug($reference.' '.$titleEn), $piece->id);
+                $piece->status = $status;
+                $piece->save();
+            }
 
             if ($this->option('images') && $piece->photos()->doesntExist()) {
                 $this->importPhotos($piece, $images->get($id, collect()), $imageTexts, $fr, $en);
             }
         }
 
-        $this->table(['PS id', 'Réf.', 'Collection', 'Titre FR', 'Title EN', 'Prix €', 'Statut', 'Photos'], $rows);
+        $this->table(['Action', 'PS id', 'Réf.', 'Collection', 'Titre FR', 'Title EN', 'Prix €', 'Statut', 'Photos'], $rows);
 
         if ($withTaxRules > 0 && (float) $this->option('tax-rate') === 0.0) {
             $this->warn("{$withTaxRules} product(s) have a tax rule in PrestaShop. PrestaShop stores prices without tax: if customers paid VAT, re-run with --tax-rate=20.");
+        }
+
+        $skipped = collect($rows)->where(0, 'déjà là')->count();
+        if ($skipped > 0) {
+            $this->comment("{$skipped} piece(s) already imported were left as they are. Use --update to overwrite them with the PrestaShop data (this replaces edits made in the admin).");
         }
 
         $this->info($dryRun ? 'Dry run: nothing was written.' : 'Import finished. Check the pieces in /admin before going live.');

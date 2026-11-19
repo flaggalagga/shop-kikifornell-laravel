@@ -122,19 +122,25 @@ The app lives in its own folder **next to** `www/` (not inside it), so `.env`, `
 
 ## Moving from PrestaShop
 
-The PrestaShop database is on the same OVH hosting.
+The PrestaShop shop (`~/www/boutique`) and its database are on the same OVH hosting. This is a **one-time move**: afterwards pieces are added and edited in the new admin.
+
+Set up once, in `~/shop-laravel/.env`: `PRESTASHOP_DB_HOST / _DATABASE / _USERNAME / _PASSWORD` (from `~/www/boutique/app/config/parameters.php`), then `php artisan optimize`.
+
+**From GitHub** (no SSH needed): Actions > *Import from PrestaShop* > Run workflow. It starts as a dry run; untick it to import for real. The table appears in the run's summary.
+
+**Or over SSH:**
 
 ```bash
-# 1. Copy PrestaShop's product photos (folder img/p) next to the new app, e.g. ~/ps-img-p
-# 2. In .env: PRESTASHOP_DB_HOST / _DATABASE / _USERNAME / _PASSWORD (from PrestaShop's app/config/parameters.php)
-php artisan shop:import-prestashop --images=/home/<user>/ps-img-p --dry-run   # check the table it prints
-php artisan shop:import-prestashop --images=/home/<user>/ps-img-p
+cd ~/shop-laravel
+php artisan shop:import-prestashop --images=$HOME/www/boutique/img/p --collections=5,6 --dry-run   # check the table
+php artisan shop:import-prestashop --images=$HOME/www/boutique/img/p --collections=5,6
 ```
 
-- Top-level categories become collections; sub-categories (Colliers, Earrings…) are folded into their collection.
+- `--collections=5,6`: only Les Pendeloques and Les Petits Mondes become collections (Earrings, Necklaces, Pendants are type categories). Products are matched through every category they are filed in.
+- The collection name and reference are removed from the start of product names (`--keep-titles` to keep them).
 - Inactive products → draft; out of stock → sold (they appear in the archive); otherwise for sale.
 - PrestaShop stores prices **without tax**. If the old shop added VAT, use `--tax-rate=20`. The command warns if it finds tax rules.
-- Safe to re-run; photos are only imported for pieces that have none.
+- **Running it again is safe**: pieces and collections already imported are left as they are (Kiki's edits, sold status…); only new ones are added, and photos only for pieces that have none. `--update` deliberately overwrites them with the PrestaShop data.
 - PrestaShop ids are kept, so old URLs (`/en/colliers/12-p002-necklace.html`, `/fr/7-les-pendeloques`) redirect (301) to the new pages.
 
 Before switching the domain, keep a full export of the PrestaShop orders and invoices: French accounting rules require keeping them for 10 years.

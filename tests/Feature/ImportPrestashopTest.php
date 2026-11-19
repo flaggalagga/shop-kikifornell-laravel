@@ -133,4 +133,34 @@ class ImportPrestashopTest extends TestCase
         $this->assertEqualsCanonicalizing([7, 10], JewelryCollection::query()->pluck('legacy_id')->all());
         $this->assertSame('LES PENDELOQUES P002 Collier Rayures', Piece::query()->where('legacy_id', 21)->value('title_fr'));
     }
+
+    public function test_running_again_keeps_edits_made_in_the_admin(): void
+    {
+        $this->artisan('shop:import-prestashop', ['--collections' => '7'])->assertSuccessful();
+
+        $piece = Piece::query()->where('legacy_id', 21)->sole();
+        $piece->update(['title_fr' => 'Collier Rayures (retouché par Kiki)', 'price_cents' => 39000]);
+        $piece->update(['status' => PieceStatus::Sold]);
+        JewelryCollection::query()->sole()->update(['intro_fr' => 'Texte réécrit.']);
+
+        // A plain re-run leaves imported pieces and collections alone.
+        $this->artisan('shop:import-prestashop', ['--collections' => '7'])
+            ->expectsOutputToContain('already imported were left as they are')
+            ->assertSuccessful();
+
+        $piece->refresh();
+        $this->assertSame('Collier Rayures (retouché par Kiki)', $piece->title_fr);
+        $this->assertSame(39000, $piece->price_cents);
+        $this->assertSame(PieceStatus::Sold, $piece->status);
+        $this->assertSame('Texte réécrit.', JewelryCollection::query()->sole()->intro_fr);
+        $this->assertDatabaseCount('pieces', 2);
+
+        // --update brings back the PrestaShop data on purpose.
+        $this->artisan('shop:import-prestashop', ['--collections' => '7', '--update' => true])->assertSuccessful();
+
+        $piece->refresh();
+        $this->assertSame('Collier Rayures', $piece->title_fr);
+        $this->assertSame(36000, $piece->price_cents);
+        $this->assertSame(PieceStatus::Available, $piece->status);
+    }
 }

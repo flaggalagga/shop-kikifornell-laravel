@@ -1,0 +1,50 @@
+name: OVH SSH
+description: >
+  Sets up the "ovh" SSH host alias used by the deploy and import workflows,
+  checks the key, and fails with a clear message when OVH refuses it.
+
+inputs:
+  host:
+    description: OVH SSH server, e.g. ssh.cluster127.hosting.ovh.net
+    required: true
+  user:
+    description: OVH login
+    required: true
+  key:
+    description: Private deploy key
+    required: true
+  known_hosts:
+    description: Output of ssh-keyscan for the host
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: Set up SSH
+      shell: bash
+      env:
+        SSH_KEY: ${{ inputs.key }}
+        KNOWN_HOSTS: ${{ inputs.known_hosts }}
+        SSH_HOST: ${{ inputs.host }}
+        SSH_USER: ${{ inputs.user }}
+      run: |
+        mkdir -p ~/.ssh && chmod 700 ~/.ssh
+        printf '%s\n' "$SSH_KEY" | tr -d '\r' > ~/.ssh/id_deploy
+        chmod 600 ~/.ssh/id_deploy
+        printf '%s\n' "$KNOWN_HOSTS" > ~/.ssh/known_hosts
+        # One host alias for every ssh/rsync call. BatchMode: never fall back to a password.
+        printf 'Host ovh\n  HostName %s\n  User %s\n  IdentityFile ~/.ssh/id_deploy\n  IdentitiesOnly yes\n  BatchMode yes\n  StrictHostKeyChecking yes\n' \
+          "$SSH_HOST" "$SSH_USER" > ~/.ssh/config
+
+        # Fingerprints are not secret: compare them with the key on OVH (ssh-keygen -lf ~/.ssh/authorized_keys).
+        if ! ssh-keygen -y -f ~/.ssh/id_deploy > ~/.ssh/id_deploy.pub 2>/dev/null; then
+          echo "::error::OVH_SSH_KEY is not a valid private key. Paste the whole content of the key file WITHOUT .pub, including the BEGIN and END lines."
+          exit 1
+        fi
+        echo "Deploy key fingerprint: $(ssh-keygen -lf ~/.ssh/id_deploy.pub)"
+        echo "Known host entries: $(grep -c . ~/.ssh/known_hosts)"
+
+        if ! ssh ovh true; then
+          echo "::error::OVH refused the deploy key. Check that the public key with the fingerprint above is in ~/.ssh/authorized_keys on OVH (chmod 700 ~/.ssh, chmod 600 ~/.ssh/authorized_keys) and that OVH_SSH_USER is the OVH login (not a local alias)."
+          exit 1
+        fi
