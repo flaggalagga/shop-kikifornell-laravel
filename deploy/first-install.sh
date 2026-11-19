@@ -71,13 +71,13 @@ EOF
 fi
 
 # ---- 2nd run: database, pages, admin --------------------------------------
-if ! $PHP artisan db:show > /dev/null 2>&1; then
-    echo "Cannot connect to the database. Check DB_* in .env, then run this script again."
+# (No `db:show` check: it runs server-status queries that shared MySQL may refuse.)
+if ! $PHP artisan migrate --force; then
+    echo
+    echo "Creating the tables failed (message above). Check DB_* in .env, then run this script again."
     exit 1
 fi
-
-$PHP artisan migrate --force
-$PHP artisan db:seed --class=Database\\Seeders\\PageSeeder --force
+$PHP artisan db:seed --class="Database\Seeders\PageSeeder" --force
 [ -e public/storage ] || $PHP artisan storage:link
 
 if [ "$($PHP artisan tinker --execute='echo \App\Models\User::count();' 2>/dev/null | tail -1)" = "0" ]; then
