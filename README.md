@@ -102,7 +102,7 @@ The app lives in its own folder **next to** `www/` (not inside it), so `.env`, `
    php artisan key:generate
    php artisan migrate --force
    php artisan db:seed --class=PageSeeder --force
-   php artisan storage:link
+   ln -sfn ../storage/app/public public/storage   # relative on purpose: `artisan storage:link` makes an absolute link, which OVH's web servers can't follow
    php artisan make:filament-user        # Kiki's and your logins
    php artisan optimize && php artisan filament:optimize
    ```

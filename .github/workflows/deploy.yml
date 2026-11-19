@@ -82,7 +82,8 @@ jobs:
             exit 0
           fi
           $PHP_BIN artisan migrate --force
-          [ -e public/storage ] || $PHP_BIN artisan storage:link
+          # Relative link: OVH's web servers see the home folder under another path (/homez.NNN/…).
+          ln -sfn ../storage/app/public public/storage
           $PHP_BIN artisan optimize
           $PHP_BIN artisan filament:optimize
           $PHP_BIN artisan up

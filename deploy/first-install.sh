@@ -78,7 +78,9 @@ if ! $PHP artisan migrate --force; then
     exit 1
 fi
 $PHP artisan db:seed --class="Database\Seeders\PageSeeder" --force
-[ -e public/storage ] || $PHP artisan storage:link
+# Relative link: OVH's web servers see the home folder under another path
+# (/homez.NNN/…) than SSH (/home/…), so an absolute link would lead nowhere.
+ln -sfn ../storage/app/public public/storage
 
 if [ "$($PHP artisan tinker --execute='echo \App\Models\User::count();' 2>/dev/null | tail -1)" = "0" ]; then
     echo
