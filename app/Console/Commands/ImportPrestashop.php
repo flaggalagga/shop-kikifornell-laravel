@@ -19,16 +19,20 @@ use Throwable;
  *
  *   php artisan shop:import-prestashop --images=/path/to/prestashop/img/p --dry-run
  *
- * - Top-level categories (direct children of "Home") become collections.
- * - Products become pieces. Inactive → draft; out of stock → sold.
+ * - Top-level categories (direct children of "Home") become collections,
+ *   or only the ones given with --collections=5,6.
+ * - Products become pieces, in the collection of their main category or of
+ *   any other category they are filed in. Inactive → draft; out of stock → sold.
+ * - The collection name and reference are removed from the start of product
+ *   names ("LES PETITS MONDES M015 Lac Vert…" → "Lac Vert…"), unless --keep-titles.
  * - Photos are copied from PrestaShop's img/p folder (originals).
  * - The PrestaShop ids are kept in legacy_id so old URLs redirect (301).
  *
  * Safe to run several times: records are matched on legacy_id and photos
  * are only imported for pieces that have none yet.
  *
- * Written against the standard PrestaShop 1.7 / 8 schema, but not yet run
- * on the real database: do a --dry-run first and check the output.
+ * Checked with a dry run against the real shop (PrestaShop on OVH, Nov 2026).
+ * Always do a --dry-run first and check the table it prints.
  */
 class ImportPrestashop extends Command
 {
@@ -36,6 +40,8 @@ class ImportPrestashop extends Command
         {--images= : Path to the PrestaShop "img/p" folder, to copy photos}
         {--prefix=ps_ : Table prefix of the PrestaShop database}
         {--shop=1 : PrestaShop shop id}
+        {--collections= : Comma-separated PrestaShop category ids to import as collections (default: all top-level categories)}
+        {--keep-titles : Keep product names as they are (by default the collection name and reference are removed from the start)}
         {--tax-rate=0 : Percentage to add to PrestaShop prices if they were stored without VAT}
         {--dry-run : Show what would be imported without writing anything}';
 
@@ -72,47 +78,81 @@ class ImportPrestashop extends Command
         // ---- Categories → collections -------------------------------------
         $categories = $this->ps('category')->get()->keyBy('id_category');
         $categoryTexts = $this->ps('category_lang')->where('id_shop', $shopId)->get()->groupBy('id_category');
-        $topLevel = $categories->filter(fn ($c) => (int) $c->id_parent === $homeId);
+        $topLevel = $categories->filter(fn ($c) => (int) $c->id_parent === $homeId)->keys()->map(fn ($id) => (int) $id);
 
-        $collectionIds = [];
-        foreach ($topLevel as $cat) {
+        $chosen = filled($this->option('collections'))
+            ? collect(explode(',', (string) $this->option('collections')))->map(fn ($id) => (int) trim($id))->filter()->values()
+            : $topLevel->values();
+
+        $this->line('Top-level categories in PrestaShop: '.$topLevel->map(fn ($id) => "#{$id} ".($categoryTexts->get($id)?->firstWhere('id_lang', $fr)?->name ?? '?'))->implode(', '));
+        if (blank($this->option('collections'))) {
+            $this->comment('All of them become collections. To keep only some, pass e.g. --collections='.$topLevel->take(2)->implode(','));
+        }
+
+        $collectionIds = [];   // PrestaShop category id => new collection id
+        $collectionNames = []; // PrestaShop category id => [fr, en]
+        foreach ($chosen as $categoryId) {
+            $cat = $categories->get($categoryId);
+            if (! $cat) {
+                $this->warn("Category #{$categoryId} does not exist in PrestaShop.");
+
+                continue;
+            }
+
             $texts = $categoryTexts->get($cat->id_category, collect())->keyBy('id_lang');
             $nameFr = $texts[$fr]->name ?? "Collection {$cat->id_category}";
-            $data = [
+            $nameEn = $texts[$en]->name ?? $nameFr;
+            $collectionNames[$categoryId] = [$nameFr, $nameEn];
+            $this->line("Collection #{$cat->id_category}: {$nameFr}");
+
+            if ($dryRun) {
+                continue;
+            }
+
+            $collection = JewelryCollection::query()->firstOrNew(['legacy_id' => $cat->id_category]);
+            $collection->fill([
                 'name_fr' => $nameFr,
-                'name_en' => $texts[$en]->name ?? $nameFr,
+                'name_en' => $nameEn,
                 'intro_fr' => $this->htmlToText($texts[$fr]->description ?? null),
                 'intro_en' => $this->htmlToText($texts[$en]->description ?? null),
                 'position' => (int) $cat->position,
                 'is_published' => (bool) $cat->active,
-            ];
-            $slug = Str::slug($texts[$fr]->link_rewrite ?? $nameFr);
-            $this->line("Collection #{$cat->id_category}: {$nameFr}");
-
-            if (! $dryRun) {
-                $collection = JewelryCollection::query()->firstOrNew(['legacy_id' => $cat->id_category]);
-                $collection->fill($data);
-                $collection->slug ??= $this->uniqueSlug(JewelryCollection::class, $slug, $collection->id);
-                $collection->save();
-                $collectionIds[$cat->id_category] = $collection->id;
-            }
+            ]);
+            $collection->slug ??= $this->uniqueSlug(JewelryCollection::class, Str::slug($texts[$fr]->link_rewrite ?? $nameFr), $collection->id);
+            $collection->save();
+            $collectionIds[$categoryId] = $collection->id;
         }
 
-        // Walk up from a product's default category to its top-level one.
-        $collectionFor = function (?int $categoryId) use ($categories, $homeId, $collectionIds): ?int {
+        // The chosen collection a category belongs to: itself or an ancestor.
+        $collectionOf = function (int $categoryId) use ($categories, $chosen): ?int {
             for ($guard = 0; $categoryId && $guard < 20; $guard++) {
-                $cat = $categories->get($categoryId);
-                if (! $cat) {
-                    return null;
+                if ($chosen->contains($categoryId)) {
+                    return $categoryId;
                 }
-                if ((int) $cat->id_parent === $homeId) {
-                    return $collectionIds[$categoryId] ?? null;
-                }
-                $categoryId = (int) $cat->id_parent;
+                $categoryId = (int) ($categories->get($categoryId)?->id_parent ?? 0);
             }
 
             return null;
         };
+
+        // A product's collection: from its main category first, then from
+        // any other category it is filed in (PrestaShop products can be in several).
+        $productCategories = $this->ps('category_product')->get()->groupBy('id_product');
+        $collectionForProduct = function (int $productId, int $defaultCategory) use ($collectionOf, $productCategories): ?int {
+            $candidates = collect([$defaultCategory])
+                ->merge($productCategories->get($productId, collect())->pluck('id_category')->map(fn ($id) => (int) $id));
+
+            foreach ($candidates as $categoryId) {
+                if ($found = $collectionOf($categoryId)) {
+                    return $found;
+                }
+            }
+
+            return null;
+        };
+
+        // Names to strip from the start of product titles, longest first.
+        $titlePrefixes = collect($collectionNames)->flatten()->unique()->sortByDesc(fn ($n) => mb_strlen($n))->values()->all();
 
         // ---- Products → pieces ---------------------------------------------
         $products = $this->ps('product')->get()->keyBy('id_product');
@@ -132,9 +172,14 @@ class ImportPrestashop extends Command
         foreach ($products as $id => $product) {
             $shop = $productShop->get($id) ?? $product;
             $texts = $productTexts->get($id, collect())->keyBy('id_lang');
+            $reference = trim((string) $product->reference) ?: "PS{$id}";
             $titleFr = trim($texts[$fr]->name ?? "Produit {$id}");
             $titleEn = trim($texts[$en]->name ?? $titleFr);
-            $reference = trim((string) $product->reference) ?: "PS{$id}";
+            if (! $this->option('keep-titles')) {
+                $titleFr = $this->cleanTitle($titleFr, $reference, $titlePrefixes);
+                $titleEn = $this->cleanTitle($titleEn, $reference, $titlePrefixes);
+            }
+            $psCollection = $collectionForProduct((int) $id, (int) ($shop->id_category_default ?? $product->id_category_default));
             $quantity = (int) ($stock->get($id)->quantity ?? 0);
             $active = (bool) ($shop->active ?? $product->active);
 
@@ -153,7 +198,7 @@ class ImportPrestashop extends Command
             $weightGrams = $weight > 0 ? (int) round($weightUnit === 'kg' ? $weight * 1000 : $weight) : null;
 
             $data = [
-                'collection_id' => $dryRun ? null : $collectionFor((int) ($shop->id_category_default ?? $product->id_category_default)),
+                'collection_id' => $psCollection ? ($collectionIds[$psCollection] ?? null) : null,
                 'title_fr' => $titleFr,
                 'title_en' => $titleEn,
                 'description_fr' => $this->joinTexts($texts[$fr] ?? null),
@@ -166,7 +211,16 @@ class ImportPrestashop extends Command
                 'position' => (int) $id,
             ];
 
-            $rows[] = [$id, $reference, $titleFr, $data['price_cents'] / 100, $status->value, $images->get($id, collect())->count()];
+            $rows[] = [
+                $id,
+                $reference,
+                $psCollection ? $collectionNames[$psCollection][0] : '—',
+                Str::limit($titleFr, 40),
+                Str::limit($titleEn, 40),
+                $data['price_cents'] / 100,
+                $status->value,
+                $images->get($id, collect())->count(),
+            ];
 
             if ($dryRun) {
                 continue;
@@ -184,7 +238,7 @@ class ImportPrestashop extends Command
             }
         }
 
-        $this->table(['PS id', 'Référence', 'Titre', 'Prix €', 'Statut', 'Photos'], $rows);
+        $this->table(['PS id', 'Réf.', 'Collection', 'Titre FR', 'Title EN', 'Prix €', 'Statut', 'Photos'], $rows);
 
         if ($withTaxRules > 0 && (float) $this->option('tax-rate') === 0.0) {
             $this->warn("{$withTaxRules} product(s) have a tax rule in PrestaShop. PrestaShop stores prices without tax: if customers paid VAT, re-run with --tax-rate=20.");
@@ -226,6 +280,26 @@ class ImportPrestashop extends Command
                 'alt_en' => $legends[$en]->legend ?? null,
             ]);
         }
+    }
+
+    /**
+     * "LES PETITS MONDES M015 Lac Vert Boucles d'oreilles" → "Lac Vert Boucles d'oreilles":
+     * the new piece pages show the collection and reference separately.
+     *
+     * @param  array<int, string>  $prefixes
+     */
+    private function cleanTitle(string $title, string $reference, array $prefixes): string
+    {
+        $clean = trim($title);
+
+        foreach ([...$prefixes, $reference] as $prefix) {
+            if ($prefix !== '' && mb_stripos($clean, $prefix) === 0) {
+                // Drop the prefix and any separator after it (multibyte-safe).
+                $clean = preg_replace('/^[\s\-–—:,.|]+/u', '', mb_substr($clean, mb_strlen($prefix)));
+            }
+        }
+
+        return $clean !== '' ? $clean : trim($title);
     }
 
     private function joinTexts(?object $texts): ?string
