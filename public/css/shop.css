@@ -188,14 +188,25 @@ strong { font-weight: 600; color: var(--ink); }
     background: none; border: 0; padding: 0; cursor: pointer;
 }
 
+.lang-short { display: none; }
+
+/* Tablets and phones: the menu folds behind a button. */
 @media (max-width: 60rem) {
     .site-header { gap: 0.5rem 1.25rem; }
     .main-nav { order: 3; flex-basis: 100%; }
-    .main-nav ul { flex-direction: column; align-items: flex-start; gap: 0.2rem; padding: 0.5rem 0; }
+    .main-nav ul { flex-direction: column; align-items: flex-start; gap: 0; padding: 0.5rem 0; }
     .js .main-nav:not(.is-open) { display: none; }
 }
 @media (min-width: 60.01rem) {
     .menu-toggle { display: none; }
+}
+/* Phones: keep the header on one line ("EN" instead of "English"). */
+@media (max-width: 30rem) {
+    .site-header { gap: 0.5rem 1rem; padding-top: 1.1rem; padding-bottom: 1.1rem; }
+    .wordmark { font-size: 1.3rem; }
+    .header-tools { gap: 0 1rem; }
+    .lang-long { display: none; }
+    .lang-short { display: inline; }
 }
 
 /* ---------- Notice ---------- */
@@ -278,6 +289,11 @@ main { max-width: var(--max); margin: 0 auto; padding: 0 var(--gutter); }
 }
 .hero .button--outline { background: rgba(255, 255, 255, 0.88); }
 .hero .button--outline:hover { background: var(--green-ink); }
+
+/* Phones and small tablets: a 4:5 photo instead of a very tall crop. */
+@media (max-width: 48rem) {
+    .hero__image img { height: auto; aspect-ratio: 4 / 5; }
+}
 
 /* Without a photo yet, the title sits on plain white. */
 .hero--plain { background: none; padding: clamp(3rem, 10vw, 7rem) 0 0; }
@@ -393,7 +409,7 @@ main { max-width: var(--max); margin: 0 auto; padding: 0 var(--gutter); }
     align-items: start;
     padding: 0.5rem 0 clamp(3rem, 7vw, 5rem);
 }
-@media (max-width: 52rem) { .piece { grid-template-columns: 1fr; } }
+@media (max-width: 44rem) { .piece { grid-template-columns: 1fr; } }
 
 .gallery__main { margin: 0; background: var(--photo); }
 .gallery__main img { width: 100%; aspect-ratio: 1; object-fit: cover; transition: opacity 0.2s ease; }
@@ -412,7 +428,7 @@ main { max-width: var(--max); margin: 0 auto; padding: 0 var(--gutter); }
 .gallery__thumbs button:hover img { opacity: 1; }
 
 .cartel { position: sticky; top: 1.5rem; }
-@media (max-width: 52rem) { .cartel { position: static; } }
+@media (max-width: 44rem) { .cartel { position: static; } }
 
 .cartel__ref {
     margin: 0 0 0.4rem;
@@ -497,7 +513,7 @@ input:focus-visible, textarea:focus-visible { border-color: var(--green); }
 .cart h1 { grid-column: 1 / -1; text-align: center; }
 .cart > .empty, .cart > .button { grid-column: 1 / -1; }
 .cart > .button { justify-self: center; }
-@media (max-width: 52rem) { .cart { grid-template-columns: 1fr; } }
+@media (max-width: 44rem) { .cart { grid-template-columns: 1fr; } }
 
 .cart__items { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--line); }
 .cart-item {
@@ -529,7 +545,7 @@ input:focus-visible, textarea:focus-visible { border-color: var(--green); }
     color: var(--text); font-size: 1rem; font-weight: 400;
     cursor: pointer;
 }
-.destination__option input { margin-top: 0.3rem; accent-color: var(--green-ink); }
+.destination__option input { width: 1.25rem; height: 1.25rem; margin: 0.15rem 0 0; accent-color: var(--green-ink); }
 .destination__label { display: block; color: var(--ink); }
 .destination__method { display: block; color: var(--muted); font-size: var(--s-small); }
 
@@ -567,6 +583,23 @@ input:focus-visible, textarea:focus-visible { border-color: var(--green); }
 .site-footer a:hover { color: var(--green-ink); text-decoration: underline; }
 .back-to-top { display: inline-block; margin-bottom: 1.5rem; font-size: 1rem; color: var(--muted) !important; }
 .footer-legal { margin: 1rem 0 0; }
+
+/* ---------- Touch screens: every link and button at least 44 px tall ---------- */
+
+@media (pointer: coarse), (max-width: 48rem) {
+    .site-header .wordmark, .main-nav a, .header-tools a, .menu-toggle,
+    .site-footer a, .back-to-top, .link-button,
+    .cartel__collection a, .section-head a, .archive-link a, .empty a {
+        display: inline-flex;
+        align-items: center;
+        min-height: 2.75rem;
+    }
+    .main-nav ul { gap: 0; }
+    .site-footer ul { gap: 0 1.5rem; margin-bottom: 0.5rem; }
+    .site-footer .wordmark { margin-bottom: 0.5rem; }
+    .gallery__thumbs button { width: 4.5rem; }
+    .cart-item form { margin-top: 0.25rem; }
+}
 
 @media (prefers-reduced-motion: reduce) {
     html { scroll-behavior: auto; }

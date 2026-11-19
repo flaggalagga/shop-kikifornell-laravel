@@ -68,7 +68,7 @@
 
         <div class="header-tools">
             @if ($otherLocale && isset($alternateUrls[$otherLocale]))
-                <a href="{{ $alternateUrls[$otherLocale] }}" hreflang="{{ $otherLocale }}" lang="{{ $otherLocale }}">{{ __('shop.nav.switch_to', [], $otherLocale) }}</a>
+                <a href="{{ $alternateUrls[$otherLocale] }}" hreflang="{{ $otherLocale }}" lang="{{ $otherLocale }}" aria-label="{{ __('shop.nav.switch_to', [], $otherLocale) }}"><span class="lang-long">{{ __('shop.nav.switch_to', [], $otherLocale) }}</span><span class="lang-short" aria-hidden="true">{{ strtoupper($otherLocale) }}</span></a>
             @endif
             <a href="{{ route('cart.show') }}" class="cart-link">
                 {{ __('shop.nav.cart') }}@if ($cartCount > 0)<span class="cart-count" aria-label="{{ trans_choice('shop.nav.cart_items', $cartCount) }}">{{ $cartCount }}</span>@endif
