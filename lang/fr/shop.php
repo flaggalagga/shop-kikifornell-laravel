@@ -7,7 +7,9 @@ return [
         'main' => 'Navigation principale',
         'footer' => 'Informations',
         'pieces' => 'Créations',
-        'atelier' => "L'atelier",
+        'atelier' => 'À propos de Kiki',
+        'contact' => 'Contact',
+        'back_to_top' => 'Retour en haut',
         'archive' => 'Pièces vendues',
         'switch_to' => 'Français',
         'cart' => 'Panier',
@@ -15,9 +17,9 @@ return [
     ],
 
     'home' => [
-        'title' => 'Le feu dans la glace',
-        'lede' => "Bijoux uniques en émail grand feu sur argent et cuivre, rehaussés d'or et de cabochons, façonnés à la main dans l'atelier de Chamonix.",
-        'cta' => 'Voir les créations',
+        'title' => 'Joaillerie artisanale',
+        'cta' => 'Créations',
+        'see_collection' => 'Voir la collection',
         'collections' => 'Collections',
         'available' => 'Disponibles en ce moment',
         'see_all' => 'Toutes les créations',

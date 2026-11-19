@@ -1,49 +1,48 @@
 <x-layout>
-    <section class="hero">
-        @if ($hero && ($heroPhoto = $hero->mainPhoto()))
-            <a class="hero__image" href="{{ route('pieces.show', $hero) }}">
-                <img src="{{ $heroPhoto->url(1600) }}" srcset="{{ $heroPhoto->srcset() }}" sizes="(min-width: 64rem) 58vw, 100vw"
-                     alt="{{ $heroPhoto->altText() }}" fetchpriority="high"
+    @php $heroPhoto = $hero?->mainPhoto(); @endphp
+    <section class="hero @unless ($heroPhoto) hero--plain @endunless">
+        @if ($heroPhoto)
+            <a class="hero__image" href="{{ route('pieces.show', $hero) }}" tabindex="-1" aria-hidden="true">
+                <img src="{{ $heroPhoto->url(1600) }}" srcset="{{ $heroPhoto->srcset() }}" sizes="100vw"
+                     alt="" fetchpriority="high"
                      @if ($heroPhoto->width) width="{{ $heroPhoto->width }}" height="{{ $heroPhoto->height }}" @endif>
             </a>
         @endif
         <div class="hero__text">
-            <h1>{{ __('shop.home.title') }}</h1>
-            <p class="lede">{{ __('shop.home.lede') }}</p>
-            @if ($hero)
-                <p class="hero__caption">
-                    <a href="{{ route('pieces.show', $hero) }}">{{ $hero->reference }}, {{ $hero->localized('title') }}</a>
-                    <span>{{ $hero->formattedPrice() }}</span>
-                </p>
-            @endif
-            <a class="button" href="{{ route('pieces.index') }}">{{ __('shop.home.cta') }}</a>
+            <h1 class="hero__title">{{ __('shop.home.title') }}</h1>
+            <p class="hero__place">Chamonix-Mont-Blanc</p>
+            <a class="button button--outline" href="{{ route('pieces.index') }}">{{ __('shop.home.cta') }}</a>
         </div>
     </section>
 
     @if ($collections->isNotEmpty())
-        <section class="collections" aria-labelledby="collections-title">
-            <h2 id="collections-title" class="section-title">{{ __('shop.home.collections') }}</h2>
-            <div class="collections__list">
-                @foreach ($collections as $collection)
-                    <a class="collection-tile" href="{{ route('collections.show', $collection) }}">
+        <section class="feature-rows" aria-label="{{ __('shop.home.collections') }}">
+            @foreach ($collections as $collection)
+                <article class="feature-row">
+                    <a class="feature-row__image" href="{{ route('collections.show', $collection) }}" tabindex="-1" aria-hidden="true">
                         @if ($cover = $collection->coverUrl())
                             <img src="{{ $cover }}" alt="" loading="lazy">
                         @endif
-                        <span class="collection-tile__name">{{ $collection->localized('name') }}</span>
-                        @if ($intro = $collection->localized('intro'))
-                            <span class="collection-tile__intro">{{ Str::limit($intro, 140) }}</span>
-                        @endif
                     </a>
-                @endforeach
-            </div>
+                    <div class="feature-row__text">
+                        <h2><a href="{{ route('collections.show', $collection) }}">{{ $collection->localized('name') }}</a></h2>
+                        @if ($intro = $collection->localized('intro'))
+                            <div class="prose">{!! Str::markdown($intro, ['html_input' => 'escape', 'allow_unsafe_links' => false]) !!}</div>
+                        @endif
+                        <p class="feature-row__cta">
+                            <a class="button button--outline" href="{{ route('collections.show', $collection) }}">{{ __('shop.home.see_collection') }}</a>
+                        </p>
+                    </div>
+                </article>
+            @endforeach
         </section>
     @endif
 
     @if ($pieces->isNotEmpty())
         <section class="pieces-section" aria-labelledby="available-title">
             <div class="section-head">
-                <h2 id="available-title" class="section-title">{{ __('shop.home.available') }}</h2>
-                <a href="{{ route('pieces.index') }}">{{ __('shop.home.see_all') }}</a>
+                <h2 id="available-title">{{ __('shop.home.available') }}</h2>
+                <p><a href="{{ route('pieces.index') }}">{{ __('shop.home.see_all') }}</a></p>
             </div>
             <div class="piece-grid">
                 @foreach ($pieces as $piece)

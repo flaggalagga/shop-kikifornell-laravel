@@ -7,6 +7,6 @@
             <p class="lede">{{ __('shop.checkout.thanks_pending') }}</p>
         @endif
         <p>{{ __('shop.checkout.thanks_next') }}</p>
-        <a class="button button--quiet" href="{{ route('home') }}">{{ __('shop.checkout.back_home') }}</a>
+        <a class="button button--outline" href="{{ route('home') }}">{{ __('shop.checkout.back_home') }}</a>
     </article>
 </x-layout>

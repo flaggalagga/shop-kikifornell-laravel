@@ -29,9 +29,10 @@ Read `README.md` first: it explains the piece lifecycle, the checkout flow and t
 
 ## Storefront design
 
-Direction "fire in ice": cool glacier palette, enamel colours come from the photos. Tokens are at the top of `public/css/shop.css`:
-Névé `#f3f6f6` (page), Glace `#dfe7ea` (panels), Encre `#1b2a3b` (text), Brume `#59677a` (secondary), Lac Vert `#2b675f` (actions), Or `#a47d2c` (thin rules only).
-Type: Gloock (display), Hanken Grotesk (text), both self-hosted. The one bold element is the large reference number on piece pages; keep everything else quiet. No all-caps labels, no scroll animations, sentence case everywhere. Check mobile (390 px) and keyboard focus for any visual change.
+The shop must look like **kikifornell.art** (Kiki's Adobe Portfolio site): it is the brand reference, check it before any visual change.
+Tokens are at the top of `public/css/shop.css`: white page, `#111` headings, `#444` body text, `#767676` secondary, `#e4e4e4` dividers, `#e9eef1` behind photos, accent green `#009b77` (`#00775b` for small text and filled buttons).
+Type: bold humanist headings (Alegreya Sans, standing in for the portfolio's Adobe font), light geometric text (Figtree, standing in for Proxima Nova), both self-hosted; `SHOP_ADOBE_FONTS_KIT` loads the real Adobe fonts.
+As on the portfolio: uppercase navigation, wordmark and buttons; square corners; square photos; centred section headings; image + text rows alternating sides; centred quiet footer with "Back to top". No scroll animations. Check mobile (390 px) and keyboard focus for any visual change.
 
 ## Writing copy
 

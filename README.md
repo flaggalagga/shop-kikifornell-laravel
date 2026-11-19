@@ -34,6 +34,7 @@ Design choices worth knowing:
 |---|---|
 | FR/EN as plain columns (`title_fr`, `title_en`) | Two fixed languages; easy to query, export and review. `HasLocalizedFields::localized()` picks the right one with fallback. |
 | No CSS/JS build step | `public/css/shop.css` and `public/js/shop.js` are hand-written; nothing to compile on OVH. Fonts are self-hosted (no Google Fonts → no GDPR issue). |
+| Looks like kikifornell.art | Same palette, uppercase navigation, square buttons and photos, alternating image + text rows. Free look-alike fonts by default; set `SHOP_ADOBE_FONTS_KIT` to an Adobe Fonts web project with the portfolio's fonts to use the real ones. |
 | Photos resized on upload | `ImageVariants` makes 480/960/1600 px WebP copies and strips EXIF (phones store GPS there). |
 | Everything synchronous | OVH shared hosting has no queue workers and runs cron at most hourly. |
 | Stripe behind `CheckoutGateway` | Tests use a fake gateway; webhook signatures are checked for real. |

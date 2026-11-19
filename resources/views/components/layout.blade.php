@@ -30,8 +30,19 @@
     @if ($image)
         <meta property="og:image" content="{{ $image }}">
     @endif
-    <link rel="preload" href="{{ asset('fonts/gloock-latin-400-normal.woff2') }}" as="font" type="font/woff2" crossorigin>
+    <link rel="preload" href="{{ asset('fonts/figtree-latin-wght-normal.woff2') }}" as="font" type="font/woff2" crossorigin>
+    <link rel="preload" href="{{ asset('fonts/alegreya-sans-latin-700-normal.woff2') }}" as="font" type="font/woff2" crossorigin>
     <link rel="stylesheet" href="{{ asset('css/shop.css') }}?v={{ filemtime(public_path('css/shop.css')) }}">
+    @if ($adobeKit = config('shop.fonts.adobe_kit'))
+        {{-- Kiki's own Adobe Fonts (same as kikifornell.art); the self-hosted look-alikes stay as fallback. --}}
+        <link rel="stylesheet" href="https://use.typekit.net/{{ $adobeKit }}.css">
+        <style>
+            :root {
+                --display: "{{ config('shop.fonts.display') }}", "Alegreya Sans", "Gill Sans", sans-serif;
+                --text-font: "{{ config('shop.fonts.text') }}", "Figtree", "Helvetica Neue", Arial, sans-serif;
+            }
+        </style>
+    @endif
     <link rel="icon" href="{{ asset('favicon.svg') }}" type="image/svg+xml">
     @if ($jsonLd)
         <script type="application/ld+json">{!! json_encode($jsonLd, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_HEX_TAG) !!}</script>
@@ -40,19 +51,20 @@
 <body>
     <a class="skip-link" href="#main">{{ __('shop.nav.skip') }}</a>
 
-    <header class="site-header">
+    <header class="site-header" id="top">
         <a class="wordmark" href="{{ route('home') }}">{{ config('shop.name') }}</a>
 
         <button type="button" class="menu-toggle" aria-controls="main-nav" aria-expanded="false" hidden>{{ __('shop.nav.menu') }}</button>
-            <nav class="main-nav" id="main-nav" aria-label="{{ __('shop.nav.main') }}">
-                <ul>
-                    <li><a href="{{ route('pieces.index') }}" @if (request()->routeIs('pieces.index')) aria-current="page" @endif>{{ __('shop.nav.pieces') }}</a></li>
-                    @foreach ($navCollections as $navCollection)
-                        <li><a href="{{ route('collections.show', $navCollection) }}" @if (request()->route('collection')?->is($navCollection)) aria-current="page" @endif>{{ $navCollection->localized('name') }}</a></li>
-                    @endforeach
-                    <li><a href="{{ route('pages.show', 'atelier') }}">{{ __('shop.nav.atelier') }}</a></li>
-                </ul>
-            </nav>
+        <nav class="main-nav" id="main-nav" aria-label="{{ __('shop.nav.main') }}">
+            <ul>
+                @foreach ($navCollections as $navCollection)
+                    <li><a href="{{ route('collections.show', $navCollection) }}" @if (request()->route('collection')?->is($navCollection)) aria-current="page" @endif>{{ $navCollection->localized('name') }}</a></li>
+                @endforeach
+                <li><a href="{{ route('pieces.index') }}" @if (request()->routeIs('pieces.index')) aria-current="page" @endif>{{ __('shop.nav.pieces') }}</a></li>
+                <li><a href="{{ route('pages.show', 'atelier') }}" @if (request()->route('page')?->slug === 'atelier') aria-current="page" @endif>{{ __('shop.nav.atelier') }}</a></li>
+                <li><a href="mailto:{{ config('shop.contact_email') }}">{{ __('shop.nav.contact') }}</a></li>
+            </ul>
+        </nav>
 
         <div class="header-tools">
             @if ($otherLocale && isset($alternateUrls[$otherLocale]))
@@ -73,10 +85,8 @@
     </main>
 
     <footer class="site-footer">
-        <div class="footer-brand">
-            <p class="wordmark">{{ config('shop.name') }}</p>
-            <p>{{ config('shop.tagline.'.$locale) }}</p>
-        </div>
+        <a class="back-to-top" href="#top">↑ {{ __('shop.nav.back_to_top') }}</a>
+        <p><a class="wordmark" href="{{ route('home') }}">{{ config('shop.name') }}</a></p>
         <nav aria-label="{{ __('shop.nav.footer') }}">
             <ul>
                 <li><a href="{{ route('pieces.archive') }}">{{ __('shop.nav.archive') }}</a></li>
@@ -84,16 +94,14 @@
                     <li><a href="{{ route('pages.show', $footerPage) }}">{{ $footerPage->localized('title') }}</a></li>
                 @endforeach
             </ul>
-        </nav>
-        <div class="footer-contact">
-            <p><a href="mailto:{{ config('shop.contact_email') }}">{{ config('shop.contact_email') }}</a></p>
-            <ul class="social">
+            <ul>
+                <li><a href="mailto:{{ config('shop.contact_email') }}">{{ config('shop.contact_email') }}</a></li>
                 @foreach (array_filter(config('shop.social')) as $network => $url)
                     <li><a href="{{ $url }}" rel="me noopener" target="_blank">{{ ucfirst($network) }}</a></li>
                 @endforeach
             </ul>
-        </div>
-        <p class="footer-legal">© {{ now()->year }} {{ config('shop.name') }}, Chamonix-Mont-Blanc</p>
+        </nav>
+        <p class="footer-legal">© {{ config('shop.name') }}, {{ now()->year }}</p>
     </footer>
 
     <script src="{{ asset('js/shop.js') }}?v={{ filemtime(public_path('js/shop.js')) }}" defer></script>

@@ -39,11 +39,11 @@ class AdminPanelProvider extends PanelProvider
             ->brandName(config('shop.name'))
             ->favicon('/favicon.svg')
             ->colors([
-                // "Lac Vert", the shop's action colour (600 = #2b675f).
+                // The green of kikifornell.art (500 = #009b77), as on the storefront.
                 'primary' => [
-                    50 => '#eef6f4', 100 => '#d5ebe6', 200 => '#acd6cd', 300 => '#7cbbad',
-                    400 => '#4f9a8c', 500 => '#357f72', 600 => '#2b675f', 700 => '#23534d',
-                    800 => '#1e4440', 900 => '#1a3936', 950 => '#0e2220',
+                    50 => '#e8f7f3', 100 => '#c6ebe1', 200 => '#93d8c6', 300 => '#5cc2a7',
+                    400 => '#2aab89', 500 => '#009b77', 600 => '#00775b', 700 => '#006450',
+                    800 => '#0b5043', 900 => '#0d4238', 950 => '#032620',
                 ],
                 'gray' => Color::Slate,
             ])

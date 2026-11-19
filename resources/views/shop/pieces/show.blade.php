@@ -63,21 +63,11 @@
                 </p>
             @endif
 
-            <dl class="cartel__details">
-                @if ($materials = $piece->localized('materials'))
-                    <div><dt>{{ __('shop.piece.materials') }}</dt><dd>{{ $materials }}</dd></div>
-                @endif
-                @if ($piece->dimensions)
-                    <div><dt>{{ __('shop.piece.dimensions') }}</dt><dd>{{ $piece->dimensions }}</dd></div>
-                @endif
-                <div><dt>{{ __('shop.piece.edition') }}</dt><dd>{{ __('shop.piece.unique') }}</dd></div>
-            </dl>
-
             <div class="cartel__buy">
                 @if ($status === PieceStatus::Sold)
                     <p class="cartel__price"><span class="status status--sold">{{ __('shop.status.sold') }}</span></p>
                     <p class="cartel__note">{{ __('shop.piece.sold_note') }}</p>
-                    <a class="button button--quiet" href="#question">{{ __('shop.piece.ask_commission') }}</a>
+                    <a class="button button--outline" href="#question">{{ __('shop.piece.ask_commission') }}</a>
                 @elseif ($status === PieceStatus::Reserved)
                     <p class="cartel__price">{{ $piece->formattedPrice() }}</p>
                     <p class="cartel__note">{{ __('shop.piece.reserved_note') }}</p>
@@ -94,6 +84,16 @@
                     <p class="cartel__note">{{ __('shop.piece.shipping_note') }}</p>
                 @endif
             </div>
+
+            <dl class="cartel__details">
+                @if ($materials = $piece->localized('materials'))
+                    <div><dt>{{ __('shop.piece.materials') }}</dt><dd>{{ $materials }}</dd></div>
+                @endif
+                @if ($piece->dimensions)
+                    <div><dt>{{ __('shop.piece.dimensions') }}</dt><dd>{{ $piece->dimensions }}</dd></div>
+                @endif
+                <div><dt>{{ __('shop.piece.edition') }}</dt><dd>{{ __('shop.piece.unique') }}</dd></div>
+            </dl>
 
             @if ($description)
                 <div class="prose cartel__description">
@@ -127,7 +127,7 @@
                 <label for="inq-website">Website</label>
                 <input id="inq-website" name="website" type="text" tabindex="-1" autocomplete="off">
             </div>
-            <button class="button button--quiet" type="submit">{{ __('shop.inquiry.send') }}</button>
+            <button class="button button--outline" type="submit">{{ __('shop.inquiry.send') }}</button>
         </form>
     </section>
 

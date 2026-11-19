@@ -16,8 +16,21 @@ return [
     'name' => env('SHOP_NAME', 'Kiki Fornell'),
 
     'tagline' => [
-        'fr' => 'Bijoux en émail grand feu, faits main à Chamonix',
-        'en' => 'Grand feu enamel jewellery, handmade in Chamonix',
+        'fr' => 'Joaillerie artisanale, émail grand feu, Chamonix-Mont-Blanc',
+        'en' => 'Handcrafted jewellery, grand feu enamel, Chamonix-Mont-Blanc',
+    ],
+
+    /*
+    | Typefaces. The look follows kikifornell.art (Adobe Portfolio), whose
+    | fonts come from Adobe Fonts. By default the shop uses close free
+    | look-alikes, self-hosted (Alegreya Sans for headings, Figtree for text).
+    | To use the exact Adobe fonts: create a web project in Adobe Fonts with
+    | the same families, add the shop's domain, and set its kit id here.
+    */
+    'fonts' => [
+        'adobe_kit' => env('SHOP_ADOBE_FONTS_KIT'),
+        'display' => env('SHOP_FONT_DISPLAY', 'calluna-sans'),
+        'text' => env('SHOP_FONT_TEXT', 'proxima-nova'),
     ],
 
     // Address that receives order notifications and customer enquiries.

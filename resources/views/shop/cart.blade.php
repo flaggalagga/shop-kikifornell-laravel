@@ -47,7 +47,7 @@
                             </label>
                         @endforeach
                     </fieldset>
-                    <noscript><button type="submit" class="button button--quiet">{{ __('shop.cart.update_destination') }}</button></noscript>
+                    <noscript><button type="submit" class="button button--outline">{{ __('shop.cart.update_destination') }}</button></noscript>
                 </form>
 
                 <dl class="totals">

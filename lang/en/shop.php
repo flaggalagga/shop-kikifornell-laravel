@@ -7,7 +7,9 @@ return [
         'main' => 'Main navigation',
         'footer' => 'Information',
         'pieces' => 'Pieces',
-        'atelier' => 'The atelier',
+        'atelier' => 'About Kiki',
+        'contact' => 'Contact',
+        'back_to_top' => 'Back to top',
         'archive' => 'Sold pieces',
         'switch_to' => 'English',
         'cart' => 'Cart',
@@ -15,9 +17,9 @@ return [
     ],
 
     'home' => [
-        'title' => 'Fire in ice',
-        'lede' => 'One-of-a-kind grand feu enamel jewellery on silver and copper, with gold accents and cabochon stones, made by hand in a Chamonix atelier.',
-        'cta' => 'See the pieces',
+        'title' => 'Handcrafted jewellery',
+        'cta' => 'Pieces',
+        'see_collection' => 'See the collection',
         'collections' => 'Collections',
         'available' => 'Available now',
         'see_all' => 'All pieces',
