@@ -9,8 +9,8 @@
 | hour. In the OVH Control Panel: Hébergements > your hosting > Tâches
 | planifiées - Cron > Ajouter, then:
 |
-|   Commande à exécuter : <project folder>/ovh-cron.php   (e.g. shop/ovh-cron.php)
-|   Langage             : PHP 8.4 (same version as .ovhconfig)
+|   Commande à exécuter : <project folder>/ovh-cron.php   (e.g. shop-laravel/ovh-cron.php)
+|   Langage             : PHP 8.5 (same version as .ovhconfig)
 |   Fréquence           : toutes les heures
 |
 | It runs Laravel's scheduler (routes/console.php).

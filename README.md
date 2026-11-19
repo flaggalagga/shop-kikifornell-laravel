@@ -81,18 +81,22 @@ vendor/bin/pint
 
 ## Install on OVH
 
-> **Check this first.** OVH applies **one PHP version to the whole hosting** (`.ovhconfig` at the FTP root). Laravel 13 needs **PHP 8.3+**. The old PrestaShop runs on the same hosting: PrestaShop 8.x only supports PHP up to 8.1, PrestaShop 9 supports 8.1–8.4. If the shop is on PrestaShop 8, export everything from it first (see *Moving from PrestaShop*), then switch the PHP version at cut-over, or put the new shop on a second hosting for the transition.
+> OVH applies **one PHP version to the whole hosting** (`.ovhconfig` in the home folder). The hosting runs **PHP 8.5** (since Nov 2026) and the old PrestaShop works on it, so both shops can run side by side. Laravel 13 needs PHP 8.3 or newer.
+
+The app lives in its own folder **next to** `www/` (not inside it), so `.env`, `vendor/` and `storage/` are never reachable from the web: `~/shop-laravel`, with `~/shop-laravel/public` as the site's root folder.
 
 1. **Database** — OVH Control Panel > Web Cloud > Hébergements > *your hosting* > Bases de données > Créer. Note host, name, user, password.
-2. **PHP version** — copy `deploy/ovhconfig.example` to `.ovhconfig` at the FTP root (after the check above).
+2. **PHP version** — already 8.5. Only if it ever changes: `deploy/ovhconfig.example` shows the expected `~/.ovhconfig`.
 3. **SSH** — enable SSH for the FTP user (Pro plan). For automatic deploys, add the deploy public key to `~/.ssh/authorized_keys` on the hosting.
-4. **Upload the code** to a folder, e.g. `~/shop`:
-   - *automatic*: set up the GitHub Actions secrets/variables listed at the top of `.github/workflows/deploy.yml`, set `DEPLOY_ENABLED=true`, and push to `main`;
+4. **Upload the code** to `~/shop-laravel`:
+   - *automatic*: set up the GitHub Actions secrets/variables listed at the top of `.github/workflows/deploy.yml` (`OVH_DEPLOY_PATH=shop-laravel`), set `DEPLOY_ENABLED=true`, and push to `main`;
    - *by hand*: run `composer install --no-dev --optimize-autoloader` locally and upload everything except `.env`, `storage/`, `tests/`.
-5. **Domain** — Multisite > modify `shop.kikifornell.art` (or a test subdomain first, e.g. `new.kikifornell.art`) and set its **root folder to `shop/public`**. Enable SSL (Let's Encrypt) for it.
-6. **`.env` on the server** — over SSH in `~/shop`: `cp .env.example .env`, then set at least:
+5. **Domain** — Multisite > add a test subdomain first (e.g. `new.kikifornell.art`), later modify `shop.kikifornell.art`, and set the **root folder to `shop-laravel/public`**. Enable SSL (Let's Encrypt) for it.
+6. **One-time setup** — over SSH: `cd ~/shop-laravel && bash deploy/first-install.sh https://new.kikifornell.art`. The first run creates `.env` and stops so you can fill it in; the second run does step 7 for you. The details, if you prefer to do it by hand:
+
+   **`.env` on the server** — over SSH in `~/shop-laravel`: `cp .env.example .env`, then set at least:
    `APP_ENV=production`, `APP_DEBUG=false`, `APP_URL=https://shop.kikifornell.art`, `LOG_LEVEL=warning`, `DB_CONNECTION=mysql` + `DB_*`, `SESSION_SECURE_COOKIE=true`, `MAIL_MAILER=smtp` + OVH mailbox, `SHOP_*` legal identity, `STRIPE_*`.
-7. **First run** (over SSH; if `php -v` shows the wrong version, use `/usr/local/php8.4/bin/php`):
+7. **First run** (over SSH; if `php -v` shows the wrong version, use `/usr/local/php8.5/bin/php`):
    ```bash
    php artisan key:generate
    php artisan migrate --force
@@ -101,7 +105,7 @@ vendor/bin/pint
    php artisan make:filament-user        # Kiki's and your logins
    php artisan optimize && php artisan filament:optimize
    ```
-8. **Scheduled task** — Tâches planifiées - Cron > Ajouter: command `shop/ovh-cron.php`, PHP 8.4, every hour. (OVH runs a PHP file, at most hourly; it runs Laravel's scheduler.)
+8. **Scheduled task** — Tâches planifiées - Cron > Ajouter: command `shop-laravel/ovh-cron.php`, PHP 8.5, every hour. (OVH runs a PHP file, at most hourly; it runs Laravel's scheduler.)
 9. **Upload size** — photos up to 15 MB are accepted by the admin; if uploads fail, check `upload_max_filesize` / `post_max_size` in the OVH panel.
 
 ## Stripe setup

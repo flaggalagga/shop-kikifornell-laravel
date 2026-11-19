@@ -7,7 +7,7 @@
 ; Laravel 13 needs PHP 8.3 or newer.
 
 app.engine=php
-app.engine.version=8.4
+app.engine.version=8.5
 http.firewall=none
 environment=production
 container.image=stable64
