@@ -290,9 +290,14 @@ main { max-width: var(--max); margin: 0 auto; padding: 0 var(--gutter); }
 .hero .button--outline { background: rgba(255, 255, 255, 0.88); }
 .hero .button--outline:hover { background: var(--green-ink); }
 
-/* Phones and small tablets: a 4:5 photo instead of a very tall crop. */
+/* Phones and small tablets: a 4:5 photo instead of a very tall crop,
+   with the title under it so it never sits on top of the jewel. */
 @media (max-width: 48rem) {
-    .hero__image img { height: auto; aspect-ratio: 4 / 5; }
+    .hero { background: none; }
+    .hero__image img { height: auto; aspect-ratio: 4 / 5; background: var(--photo); }
+    .hero__text { position: static; padding-top: 1.75rem; }
+    .hero__title { color: var(--ink); text-shadow: none; }
+    .hero .button--outline { background: none; }
 }
 
 /* Without a photo yet, the title sits on plain white. */
